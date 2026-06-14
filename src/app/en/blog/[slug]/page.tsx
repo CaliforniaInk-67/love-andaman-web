@@ -1,0 +1,95 @@
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { client } from "@/sanity/lib/client";
+import { PortableText } from "@portabletext/react";
+
+export const revalidate = 0;
+
+const POST_DETAIL_QUERY = `*[_type == "post" && slug.current == $slug][0] {
+  title,
+  "imageUrl": mainImage.asset->url,
+  publishedAt,
+  body,
+  "category": categories[0]->title
+}`;
+
+const components = {
+  block: {
+    h1: ({ children }: any) => <h1 className="text-3xl font-bold text-[#011a54] mt-8 mb-4">{children}</h1>,
+    h2: ({ children }: any) => <h2 className="text-2xl font-bold text-[#011a54] mt-6 mb-3">{children}</h2>,
+    h3: ({ children }: any) => <h3 className="text-xl font-bold text-[#011a54] mt-4 mb-2">{children}</h3>,
+    normal: ({ children }: any) => <p className="text-gray-600 leading-relaxed mb-4 font-light text-base md:text-lg">{children}</p>,
+  },
+  list: {
+    bullet: ({ children }: any) => <ul className="list-disc list-inside mb-4 pl-4 text-gray-600 font-light space-y-2">{children}</ul>,
+    number: ({ children }: any) => <ol className="list-decimal list-inside mb-4 pl-4 text-gray-600 font-light space-y-2">{children}</ol>,
+  },
+};
+
+export default async function BlogDetailPageEn({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const post = await client.fetch(POST_DETAIL_QUERY, { slug });
+
+  if (!post) {
+    notFound();
+  }
+
+  const formattedDate = post.publishedAt
+    ? new Date(post.publishedAt).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })
+    : "No date specified";
+
+  return (
+    <main className="min-h-screen bg-gray-50 pb-24">
+      {/* Back Button */}
+      <div className="max-w-4xl mx-auto px-6 pt-8">
+        <Link href="/en/blog" className="text-sm font-medium text-[#00b5e2] hover:text-[#011a54] inline-flex items-center gap-2 transition-colors group">
+          <svg className="w-4 h-4 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Blog
+        </Link>
+      </div>
+
+      <article className="max-w-4xl mx-auto px-6 mt-6">
+        {/* Header */}
+        <header className="mb-8 text-center md:text-left">
+          {post.category && (
+            <span className="bg-[#00b5e2]/10 text-[#00b5e2] text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
+              {post.category}
+            </span>
+          )}
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[#011a54] mt-4 mb-4 leading-tight">
+            {post.title}
+          </h1>
+          <div className="text-sm text-gray-400 flex items-center justify-center md:justify-start gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            {formattedDate}
+          </div>
+        </header>
+
+        {/* Cover Image */}
+        <div className="w-full aspect-[16/9] rounded-2xl overflow-hidden relative shadow-md bg-gray-200 mb-12">
+          <Image
+            src={post.imageUrl || "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?q=80&w=1000&auto=format&fit=crop"}
+            alt={post.title}
+            fill
+            priority
+            className="object-cover"
+          />
+        </div>
+
+        {/* Content Body */}
+        <div className="prose max-w-none bg-white rounded-2xl p-8 md:p-12 shadow-sm border border-gray-100">
+          {post.body ? (
+            <PortableText value={post.body} components={components} />
+          ) : (
+            <p className="text-gray-400 font-light italic">No content available for this article.</p>
+          )}
+        </div>
+      </article>
+    </main>
+  );
+}
